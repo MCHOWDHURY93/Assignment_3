@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-# "IS211_Assignment3"
+
 
 import csv
 import argparse
