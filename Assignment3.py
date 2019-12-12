@@ -1,129 +1,92 @@
+"""Assignment 3"""
 
 
+# from datetime import datetime
+import urllib2
 import csv
 import argparse
-import urllib2
+import sys
 import re
 
+# http://s3.amazonaws.com/cuny-is211-spring2015/weblog.csv
+
 parser = argparse.ArgumentParser()
-parser.add_argument('-u', '--url', help="Enter a URL linking to a .csv file.")
+parser.add_argument('--url', help='display a url with a csv')
 args = parser.parse_args()
 
 
-def downloadData(url):
-    """Opens a supplied URL link.
-    Args:
-        url(str): A string for a website URL.
-    Returns:
-        datafile(various): A variable linked to an applicable datafile found at
-        the supplied URL, if valid.
-    Example:
-        >>> downloadData('http://s3.amazonaws.com/cuny-is211-spring2015
-        /weblog.csv')
-        <addinfourl at 3043930156L whose fp = <socket._fileobject object at
-        0xb56c4a6c>>
-    """
-    datafile = urllib2.urlopen(url)
-    return datafile
+def downloadData(url=''):
+    '''
+    Takes in a string of url and returns info from it.
+    '''
+    request = urllib2.Request(url)
+    response = urllib2.urlopen(request)
+    return response
 
 
-def processData(datafile):
-    """Processes a URL linked to a .csv file containing file pate, date & time,
-    User-Agent, request status, and request size.
-    Args:
-        datafile(file): A .csv file supplied by user via a URL.
-    Returns:
-        msg(str): A string containing a synopsis of the number of page hits,
-        the percentage of image requests, the browser with the most hits, and
-        how many hits that browser had.
-    Example:
-        >>> load = downloadData('http://s3.amazonaws.com/cuny-is211-spring2015
-        /weblog.csv')
-        >>> processData(load)
-    """
+def processData(info):
+    '''
+    Takes in CSV and finds percentage of images hits and
+    most popular browser for the day.
+    '''
+    csvFile = csv.reader(info)
+    imageHits = 0.0
+    totalHits = 0.0
 
-    readfile = csv.reader(datafile)
-    linecount = 0
-    imgcount = 0
+    safari = 0
+    chrome = 0
+    firefox = 0
+    ie = 0
+    # other = 0
 
-    chrome = ['Google Chrome', 0]
-    ie = ['Internet Explorer', 0]
-    safari = ['Safari', 0]
-    fox = ['Firefox', 0]
-    for line in readfile:
-        linecount += 1
-        if re.search("firefox", line[2], re.I):
-            fox[1] += 1
-        elif re.search(r"IE", line[2]):
-            ie[1] += 1
-        elif re.search(r"Chrome", line[2]):
-            chrome[1] += 1
-        elif re.search(r"Safari", line[2]) and not re.search("Chrome", line[2]):
-            safari[1] += 1
-        if re.search(r"jpe?g|JPE?G|png|PNG|gif|GIF", line[0]):
-            imgcount += 1
 
-    img_hit_pct = (float(imgcount) / linecount) * 100
+    for row in csvFile:
+        path = row[0]
+        # timeAccessed = row[1]
+        browser = row[2]
+        # status = row[3]
+        # size = row[4]
 
-    brwsr_count = [chrome, ie, safari, fox]
+        totalHits += 1.0
 
-    top_brwsr = 0
-    top_name = ' '
-    for b in brwsr_count:
-        if b[1] > top_brwsr:
-            top_brwsr = b[1]
-            top_name = b[0]
+        images = re.search('(\.jpg|\.jpeg|\.png|\.gif)$', path, re.I)
+        if images:
+            imageHits += 1.0
         else:
             continue
 
-    msg = ('There were {} page hits today, image requests account for {}% of '
-           'hits. \n{} has the most hits with {}.').format(linecount,
-                                                           img_hit_pct,
-                                                           top_name,
-                                                           top_brwsr)
-    print msg
-    
-    
-def hourHits(dataList):
+        fsafari = re.findall('safari/\d+', browser, re.I)
+        fchrome = re.findall('chrome/\d+', browser, re.I)
+        ffirefox = re.findall('firefox/\d+', browser, re.I)
+        fie = re.findall('MSIE\s', browser, re.I)
 
-    hitsDict={}
-    for data in dataList:
-        hours= datetime.datetime.strptime(data[1], '%Y-%m-%d %H:%M:%S').hour 
-        if hours not in hitsDict:
-            hitsDict[hours]=1
+        if fchrome:
+            chrome += 1
+        elif fie:
+            ie += 1
+        elif ffirefox:
+            firefox += 1
+        elif fsafari and not fchrome is True:
+            safari += 1
         else:
-            hitsDict[hours]+=1
+            other += 1
 
-    hitsTup=list()  
-    for key, value in list(hitsDict.items()):
-        hitsTup.append((value,key)) 
-    
-    hitsTup.sort(reverse=True) 
-    for i,value in hitsTup:
-        print("Hour {} has {} hits".format(value, i)) 
+    allB = {
+        'Chrome': chrome,
+        'Safari': safari,
+        'Internet Explorer':ie,
+        'Firefox': firefox}
+    # print allB
 
+    percent = (imageHits/totalHits) * 100
+    print "Image requests account for {0:0.1f} of all requests".format(percent)
+    print "The most popular browser today was", max(allB, key=allB.get)
 
-def main():
-    """Combines downloadData function and processData into one script to be run
-    on the command line."""
-    if not args.url:
-        raise SystemExit
+if not args.url:
+    sys.exit()
+else:
     try:
-        data = downloadData(args.url)
+        csvData = downloadData(args.url)
+        print processData(csvData)
     except urllib2.URLError:
-        print 'Please enter a valid URL.'
-        raise
-    else:
-        processData(data)
-        hourHits(browserData)
-	
-
-
-if __name__ == '__main__':
-    main()
-
-
-
-
-
-
+        sys.exit()
