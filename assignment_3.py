@@ -1,4 +1,3 @@
-
 import csv
 import argparse
 import urllib2
